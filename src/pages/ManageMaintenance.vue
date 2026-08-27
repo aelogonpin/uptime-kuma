@@ -155,7 +155,7 @@ export default {
          */
         icon(icon) {
             if (icon === "/icon.svg") {
-                return icon;
+                return this.iconUrl;
             } else {
                 return getResBaseURL() + icon;
             }

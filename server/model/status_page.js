@@ -205,8 +205,11 @@ class StatusPage extends BeanModel {
 
         head.append(script);
 
+        let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
+        if (!basePath.endsWith("/")) basePath += "/";
+        
         // manifest.json
-        $("link[rel=manifest]").attr("href", `/api/status-page/${statusPage.slug}/manifest.json`);
+        $("link[rel=manifest]").attr("href", `${basePath}api/status-page/${statusPage.slug}/manifest.json`);
 
         return $.root().html();
     }
@@ -500,11 +503,18 @@ class StatusPage extends BeanModel {
      * @returns {string} Path
      */
     getIcon() {
-        if (!this.icon) {
-            return "/icon.svg";
-        } else {
-            return this.icon;
+        let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
+        if (!basePath.endsWith("/")) basePath += "/";
+
+        let icon = this.icon;
+        if (!icon) {
+            icon = "/icon.svg";
         }
+        
+        if (icon.startsWith("/")) {
+            return basePath + icon.substring(1);
+        }
+        return icon;
     }
 
     /**

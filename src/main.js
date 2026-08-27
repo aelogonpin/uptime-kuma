@@ -42,12 +42,15 @@ app.use(Toast, loadToastSettings());
 app.component("Editable", contenteditable);
 app.component("FontAwesomeIcon", FontAwesomeIcon);
 
+app.config.globalProperties.basePath = import.meta.env.BASE_URL || "/";
+app.config.globalProperties.iconUrl = (import.meta.env.BASE_URL || "/") + "icon.svg";
+
 app.mount("#app");
 
 // Service Worker
 // Mainly for Webpush notification
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/serviceWorker.js", { scope: "/" }).catch((error) => {
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + "serviceWorker.js", { scope: import.meta.env.BASE_URL }).catch((error) => {
         console.error("Service worker registration failed:", error);
     });
 }
@@ -57,3 +60,4 @@ if (process.env.NODE_ENV === "development") {
     console.log("Dev Only: window.app is the vue instance");
     window.app = app._instance;
 }
+

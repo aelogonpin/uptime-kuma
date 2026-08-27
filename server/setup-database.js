@@ -8,6 +8,7 @@ const { allowDevAllOrigin, printServerUrls } = require("./util-server");
 const mysql = require("mysql2/promise");
 const { isSSL, sslKey, sslCert, sslKeyPassphrase } = require("./config");
 const https = require("https");
+const http = require("http");
 
 /**
  * Reads a configuration value from an environment variable or a Docker secrets file.
@@ -135,7 +136,17 @@ class SetupDatabase {
      */
     start(hostname, port) {
         return new Promise((resolve) => {
-            const app = express();
+            const expressApp = express();
+            const app = express.Router();
+            let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
+            if (!basePath.startsWith("/")) basePath = "/" + basePath;
+            
+            expressApp.use(basePath, app);
+            
+            if (basePath !== "/") {
+                expressApp.get("/", (req, res) => res.redirect(basePath));
+            }
+
             let tempServer;
             app.use(express.json());
 
@@ -146,7 +157,8 @@ class SetupDatabase {
             });
 
             app.get("/", async (request, response) => {
-                response.redirect("/setup-database");
+                let redirectPath = basePath.replace(/\/+$/, "") + "/setup-database";
+                response.redirect(redirectPath);
             });
 
             app.get("/api/entry-page", async (request, response) => {
@@ -317,10 +329,10 @@ class SetupDatabase {
                         cert: fs.readFileSync(sslCert),
                         passphrase: sslKeyPassphrase,
                     },
-                    app
+                    expressApp
                 );
             } else {
-                server = app;
+                server = tempServer = http.createServer(expressApp);
             }
 
             tempServer = server.listen(port, hostname, () => {

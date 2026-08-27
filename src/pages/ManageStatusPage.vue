@@ -25,13 +25,13 @@
                     <a
                         v-for="statusPage in $root.statusPageList"
                         :key="statusPage.slug"
-                        :href="'/status/' + statusPage.slug"
+                        :href="basePath + 'status/' + statusPage.slug"
                         class="item"
                     >
                         <img :src="icon(statusPage.icon)" alt class="logo me-2" />
                         <div class="info">
                             <div class="title">{{ statusPage.title }}</div>
-                            <div class="slug">/status/{{ statusPage.slug }}</div>
+                            <div class="slug">{{ basePath }}status/{{ statusPage.slug }}</div>
                         </div>
                         <div class="actions">
                             <button
@@ -84,7 +84,7 @@ export default {
          */
         icon(icon) {
             if (icon === "/icon.svg") {
-                return icon;
+                return this.iconUrl;
             } else {
                 return getResBaseURL() + icon;
             }

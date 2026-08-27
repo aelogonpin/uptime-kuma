@@ -83,7 +83,18 @@ class UptimeKumaServer {
         axios.defaults.timeout = 300 * 1000;
 
         log.info("server", "Creating express and socket.io instance");
-        this.app = express();
+        this.expressApp = express();
+        this.app = express.Router();
+
+        let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
+        if (!basePath.startsWith("/")) basePath = "/" + basePath;
+        
+        this.expressApp.use(basePath, this.app);
+
+        if (basePath !== "/") {
+            this.expressApp.get("/", (req, res) => res.redirect(basePath));
+        }
+
         if (isSSL) {
             log.info("server", "Server Type: HTTPS");
             this.httpServer = https.createServer(
@@ -92,11 +103,11 @@ class UptimeKumaServer {
                     cert: fs.readFileSync(sslCert),
                     passphrase: sslKeyPassphrase,
                 },
-                this.app
+                this.expressApp
             );
         } else {
             log.info("server", "Server Type: HTTP");
-            this.httpServer = http.createServer(this.app);
+            this.httpServer = http.createServer(this.expressApp);
         }
 
         try {
@@ -144,7 +155,9 @@ class UptimeKumaServer {
             };
         }
 
+        let socketPath = (basePath === "/" ? "" : basePath.replace(/\/+$/, "")) + "/socket.io";
         this.io = new Server(this.httpServer, {
+            path: socketPath,
             cors,
             allowRequest: async (req, callback) => {
                 let transport;

@@ -279,9 +279,9 @@ let needSetup = false;
             let slug = StatusPage.domainMappingList[hostname];
             await StatusPage.handleStatusPageResponse(response, server.indexHTML, slug);
         } else if (uptimeKumaEntryPage && uptimeKumaEntryPage.startsWith("statusPage-")) {
-            response.redirect("/status/" + uptimeKumaEntryPage.replace("statusPage-", ""));
+            response.redirect(request.baseUrl + "/status/" + uptimeKumaEntryPage.replace("statusPage-", ""));
         } else {
-            response.redirect("/dashboard");
+            response.redirect(request.baseUrl + "/dashboard");
         }
     });
 
@@ -378,7 +378,7 @@ let needSetup = false;
 
     // Universal Route Handler, must be at the end of all express routes.
     app.get("*", async (_request, response) => {
-        if (_request.originalUrl.startsWith("/upload/")) {
+        if (_request.path.startsWith("/upload/")) {
             response.status(404).send("File not found.");
         } else {
             response.send(server.indexHTML);

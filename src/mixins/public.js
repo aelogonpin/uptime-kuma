@@ -8,12 +8,16 @@ if (env === "development" && isDevContainer()) {
     axios.defaults.baseURL = location.protocol + "//" + getDevContainerServerHostname();
 } else if (env === "development" || localStorage.dev === "dev") {
     axios.defaults.baseURL = location.protocol + "//" + location.hostname + ":3001";
+} else {
+    axios.defaults.baseURL = import.meta.env.BASE_URL;
 }
 
 export default {
     data() {
         return {
             publicGroupList: [],
+            iconUrl: (import.meta.env.BASE_URL || "/") + "icon.svg",
+            basePath: import.meta.env.BASE_URL || "/",
         };
     },
     computed: {
@@ -48,7 +52,9 @@ export default {
             if (env === "development" || localStorage.dev === "dev") {
                 return axios.defaults.baseURL;
             } else {
-                return location.protocol + "//" + location.host;
+                let basePath = import.meta.env.BASE_URL || "/";
+                if (basePath.endsWith("/")) basePath = basePath.slice(0, -1);
+                return location.protocol + "//" + location.host + basePath;
             }
         },
     },

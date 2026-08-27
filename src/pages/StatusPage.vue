@@ -255,7 +255,7 @@
                 </span>
 
                 <!-- Uploader -->
-                <!--    url="/api/status-page/upload-logo" -->
+                <!--    url="api/status-page/upload-logo" -->
                 <ImageCropUpload
                     v-model="showImageCropUpload"
                     field="img"
@@ -280,7 +280,7 @@
                         {{ $t("Edit Status Page") }}
                     </button>
 
-                    <a href="/manage-status-page" class="btn btn-primary mb-2">
+                    <a :href="basePath + 'manage-status-page'" class="btn btn-primary mb-2">
                         <font-awesome-icon icon="tachometer-alt" />
                         {{ $t("Go to Dashboard") }}
                     </a>
@@ -696,7 +696,7 @@ export default {
             incident: null,
             previousIncident: null,
             showImageCropUpload: false,
-            imgDataUrl: "/icon.svg",
+            imgDataUrl: import.meta.env.BASE_URL + "icon.svg",
             loadedTheme: false,
             loadedData: false,
             baseURL: "",
@@ -1027,7 +1027,7 @@ export default {
             })
             .catch(function (error) {
                 if (error.response.status === 404) {
-                    location.href = "/page-not-found";
+                    location.href = import.meta.env.BASE_URL + "page-not-found";
                 }
                 console.log(error);
             });
@@ -1055,7 +1055,7 @@ export default {
                     })
                 );
             } else {
-                return axios.get("/api/status-page/" + this.slug);
+                return axios.get("api/status-page/" + this.slug);
             }
         },
 
@@ -1075,7 +1075,7 @@ export default {
         updateHeartbeatList() {
             // If editMode, it will use the data from websocket.
             if (!this.editMode) {
-                axios.get("/api/status-page/heartbeat/" + this.slug).then((res) => {
+                axios.get("api/status-page/heartbeat/" + this.slug).then((res) => {
                     const { heartbeatList, uptimeList } = res.data;
 
                     this.$root.heartbeatList = heartbeatList;
@@ -1168,7 +1168,7 @@ export default {
 
                         setTimeout(() => {
                             this.loading = false;
-                            location.href = "/status/" + this.config.slug;
+                            location.href = import.meta.env.BASE_URL + "status/" + this.config.slug;
                         }, time);
                     } else {
                         this.loading = false;
@@ -1193,7 +1193,7 @@ export default {
             this.$root.getSocket().emit("deleteStatusPage", this.slug, (res) => {
                 if (res.ok) {
                     this.enableEditMode = false;
-                    location.href = "/manage-status-page";
+                    location.href = import.meta.env.BASE_URL + "manage-status-page";
                 } else {
                     this.$root.toastError(res.msg);
                 }
@@ -1239,7 +1239,7 @@ export default {
          * @returns {void}
          */
         discard() {
-            location.href = "/status/" + this.slug;
+            location.href = import.meta.env.BASE_URL + "status/" + this.slug;
         },
 
         /**
@@ -1270,7 +1270,7 @@ export default {
                 return;
             }
 
-            this.imgDataUrl = "/icon.svg";
+            this.imgDataUrl = import.meta.env.BASE_URL + "icon.svg";
             this.config.icon = this.imgDataUrl;
             toast.success(this.$t("imageResetConfirmation"));
         },
@@ -1426,8 +1426,8 @@ export default {
                 });
             } else {
                 const url = cursor
-                    ? `/api/status-page/${this.slug}/incident-history?cursor=${encodeURIComponent(cursor)}`
-                    : `/api/status-page/${this.slug}/incident-history`;
+                    ? `api/status-page/${this.slug}/incident-history?cursor=${encodeURIComponent(cursor)}`
+                    : `api/status-page/${this.slug}/incident-history`;
                 axios
                     .get(url)
                     .then((res) => {
