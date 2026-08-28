@@ -34,6 +34,7 @@ It is a temporary live demo, all data will be deleted after 10 minutes. Sponsore
 - Certificate info
 - Proxy support
 - 2FA support
+- **Subpath Support**: Fully integrated support for hosting Uptime Kuma under a subpath (e.g. `http://your-domain.com/kuma/`) via `UPTIME_KUMA_BASE_PATH`.
 
 ## 🔧 How to Install
 
