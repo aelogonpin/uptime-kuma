@@ -22,7 +22,6 @@ permissions:
 jobs:
   # Rename common PR titles to follow the format requirements.
   auto-title:
-    if: github.repository == 'louislam/uptime-kuma'
     name: Auto Title
     runs-on: ubuntu-latest
     permissions:

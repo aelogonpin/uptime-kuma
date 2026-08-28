@@ -9,7 +9,6 @@ permissions: {}
 jobs:
   stale:
     # Only run on the original repository, not on forks
-    if: github.repository == 'louislam/uptime-kuma'
     runs-on: ubuntu-latest
     permissions:
       actions: write
