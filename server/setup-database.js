@@ -139,7 +139,8 @@ class SetupDatabase {
             const expressApp = express();
             const app = express.Router();
             let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
-            if (!basePath.startsWith("/")) basePath = "/" + basePath;
+            if (!basePath.startsWith("/")) {
+    basePath = "/" + basePath;}
             
             expressApp.use(basePath, app);
             

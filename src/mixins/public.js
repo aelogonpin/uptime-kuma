@@ -53,7 +53,8 @@ export default {
                 return axios.defaults.baseURL;
             } else {
                 let basePath = import.meta.env.BASE_URL || "/";
-                if (basePath.endsWith("/")) basePath = basePath.slice(0, -1);
+                if (basePath.endsWith("/")) {
+    basePath = basePath.slice(0, -1);}
                 return location.protocol + "//" + location.host + basePath;
             }
         },

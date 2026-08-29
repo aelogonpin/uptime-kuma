@@ -206,7 +206,8 @@ class StatusPage extends BeanModel {
         head.append(script);
 
         let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
-        if (!basePath.endsWith("/")) basePath += "/";
+        if (!basePath.endsWith("/")) {
+    basePath += "/";}
         
         // manifest.json
         $("link[rel=manifest]").attr("href", `${basePath}api/status-page/${statusPage.slug}/manifest.json`);
@@ -504,7 +505,8 @@ class StatusPage extends BeanModel {
      */
     getIcon() {
         let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
-        if (!basePath.endsWith("/")) basePath += "/";
+        if (!basePath.endsWith("/")) {
+    basePath += "/";}
 
         let icon = this.icon;
         if (!icon) {

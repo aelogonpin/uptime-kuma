@@ -125,7 +125,8 @@ router.get("/api/status-page/:slug/manifest.json", cache("1440 minutes"), async 
         }
 
         let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
-        if (!basePath.endsWith("/")) basePath += "/";
+        if (!basePath.endsWith("/")) {
+    basePath += "/";}
 
         // Response
         response.json({

@@ -87,7 +87,8 @@ class UptimeKumaServer {
         this.app = express.Router();
 
         let basePath = process.env.UPTIME_KUMA_BASE_PATH || "/";
-        if (!basePath.startsWith("/")) basePath = "/" + basePath;
+        if (!basePath.startsWith("/")) {
+    basePath = "/" + basePath;}
         
         this.expressApp.use(basePath, this.app);
 
