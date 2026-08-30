@@ -109,6 +109,9 @@ export default {
                 "remote-browsers": {
                     title: this.$t("Remote Browsers"),
                 },
+                "remote-forwarding": {
+                    title: this.$t("Remote Forwarding"),
+                },
                 security: {
                     title: this.$t("Security"),
                 },

@@ -36,7 +36,7 @@ exports.login = async function (username, password) {
 /**
  * Validate a provided API key
  * @param {string} key API key to verify
- * @returns {boolean} API is ok?
+ * @returns {Promise<(Bean|false)>} The api_key bean if valid, else false
  */
 async function verifyAPIKey(key) {
     if (typeof key !== "string") {
@@ -59,7 +59,7 @@ async function verifyAPIKey(key) {
         return false;
     }
 
-    return hash && passwordHash.verify(clear, hash.key);
+    return (await passwordHash.verify(clear, hash.key)) ? hash : false;
 }
 
 /**
@@ -84,7 +84,7 @@ function apiAuthorizer(username, password, callback) {
                 if (!valid) {
                     log.warn("api-auth", "Failed API auth attempt: invalid API Key");
                 }
-                callback(null, valid);
+                callback(null, Boolean(valid));
                 // Only allow a set number of api requests per minute
                 // (currently set to 60)
                 apiRateLimiter.removeTokens(1);
@@ -174,3 +174,5 @@ exports.apiAuth = async function (req, res, next) {
         next();
     }
 };
+
+exports.verifyAPIKey = verifyAPIKey;

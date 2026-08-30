@@ -144,6 +144,7 @@ const Database = require("./database");
 
 log.debug("server", "Importing Background Jobs");
 const { initBackgroundJobs, stopBackgroundJobs } = require("./jobs");
+const RemoteForward = require("./remote-forward");
 const { loginRateLimiter, twoFaRateLimiter } = require("./rate-limiter");
 
 const { apiAuth } = require("./auth");
@@ -191,6 +192,7 @@ const {
 const { statusPageSocketHandler } = require("./socket-handlers/status-page-socket-handler");
 const { databaseSocketHandler } = require("./socket-handlers/database-socket-handler");
 const { remoteBrowserSocketHandler } = require("./socket-handlers/remote-browser-socket-handler");
+const { remoteForwardSocketHandler } = require("./socket-handlers/remote-forward-socket-handler");
 const TwoFA = require("./2fa");
 const StatusPage = require("./model/status_page");
 const {
@@ -1738,6 +1740,7 @@ let needSetup = false;
         maintenanceSocketHandler(socket);
         apiKeySocketHandler(socket);
         remoteBrowserSocketHandler(socket);
+        remoteForwardSocketHandler(socket);
         generalSocketHandler(socket, server);
         chartSocketHandler(socket);
 
@@ -1775,6 +1778,8 @@ let needSetup = false;
 
         // Put this here. Start background jobs after the db and server is ready to prevent clear up during db migration.
         await initBackgroundJobs();
+
+        RemoteForward.start();
 
         checkVersion.startInterval();
     });
@@ -1991,6 +1996,7 @@ async function shutdownFunction(signal) {
     }
 
     stopBackgroundJobs();
+    RemoteForward.stop();
     await cloudflaredStop();
     Settings.stopCacheCleaner();
 }

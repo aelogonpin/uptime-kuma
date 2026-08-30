@@ -10,7 +10,7 @@ const { R } = require("redbean-node");
 const apicache = require("../modules/apicache");
 const Monitor = require("../model/monitor");
 const dayjs = require("dayjs");
-const { UP, MAINTENANCE, DOWN, PENDING, flipStatus, log, badgeConstants } = require("../../src/util");
+const { UP, MAINTENANCE, DOWN, PENDING, log, badgeConstants } = require("../../src/util");
 const StatusPage = require("../model/status_page");
 const { UptimeKumaServer } = require("../uptime-kuma-server");
 const { makeBadge } = require("badge-maker");
@@ -18,6 +18,9 @@ const { Prometheus } = require("../prometheus");
 const Database = require("../database");
 const { UptimeCalculator } = require("../uptime-calculator");
 const { Settings } = require("../settings");
+const { apiAuth, verifyAPIKey } = require("../auth");
+const { ingestAgentBatch } = require("../remote-agent");
+const RemoteForward = require("../remote-forward");
 
 let router = express.Router();
 
@@ -85,7 +88,13 @@ router.all("/api/push/:pushToken", async (request, response) => {
             msg = "Monitor under maintenance";
             bean.status = MAINTENANCE;
         } else {
-            determineStatus(statusFromParam, previousHeartbeat, monitor.maxretries, monitor.isUpsideDown(), bean);
+            Monitor.determineStatus(
+                statusFromParam,
+                previousHeartbeat,
+                monitor.maxretries,
+                monitor.isUpsideDown(),
+                bean
+            );
         }
 
         // Calculate uptime
@@ -128,6 +137,8 @@ router.all("/api/push/:pushToken", async (request, response) => {
 
         Monitor.sendStats(io, monitor.id, monitor.user_id);
 
+        RemoteForward.enqueue(monitor, bean);
+
         try {
             new Prometheus(monitor, await monitor.getTags()).update(bean, undefined);
         } catch (e) {
@@ -143,6 +154,57 @@ router.all("/api/push/:pushToken", async (request, response) => {
             msg: e.message,
         });
     }
+});
+
+/**
+ * Batch ingestion endpoint for remote agent instances (e.g. an Uptime Kuma
+ * running in a restricted network zone) forwarding their own local
+ * monitoring results to this central instance.
+ */
+router.post("/api/push-agent", apiAuth, async (request, response) => {
+    try {
+        if (!request.auth) {
+            throw new Error("Unauthorized");
+        }
+
+        let userID;
+        const apiKey = await verifyAPIKey(request.auth.password);
+        if (apiKey) {
+            userID = apiKey.user_id;
+        } else {
+            const user = await R.findOne("user", " username = ? ", [request.auth.user]);
+            userID = user?.id;
+        }
+
+        if (!userID) {
+            throw new Error("Unauthorized");
+        }
+
+        const agentName = request.body?.agentName;
+        const monitorItems = request.body?.monitors;
+
+        await ingestAgentBatch(userID, agentName, monitorItems);
+
+        response.json({
+            ok: true,
+        });
+    } catch (e) {
+        response.status(400).json({
+            ok: false,
+            msg: e.message,
+        });
+    }
+});
+
+/**
+ * Lightweight reachability/auth check for a remote agent's "Test" button —
+ * confirms the agent can reach this central instance and that the API Key
+ * is valid, without creating or touching any monitor data.
+ */
+router.get("/api/push-agent/ping", apiAuth, async (request, response) => {
+    response.json({
+        ok: true,
+    });
 });
 
 router.get("/api/badge/:id/status", cache("5 minutes"), async (request, response) => {
@@ -563,60 +625,6 @@ router.get("/api/badge/:id/response", cache("5 minutes"), async (request, respon
         sendHttpError(response, error.message);
     }
 });
-
-/**
- * Determines the status of the next beat in the push route handling.
- * @param {string} status - The reported new status.
- * @param {object} previousHeartbeat - The previous heartbeat object.
- * @param {number} maxretries - The maximum number of retries allowed.
- * @param {boolean} isUpsideDown - Indicates if the monitor is upside down.
- * @param {object} bean - The new heartbeat object.
- * @returns {void}
- */
-function determineStatus(status, previousHeartbeat, maxretries, isUpsideDown, bean) {
-    if (isUpsideDown) {
-        status = flipStatus(status);
-    }
-
-    if (previousHeartbeat) {
-        if (previousHeartbeat.status === UP && status === DOWN) {
-            // Going Down
-            if (maxretries > 0 && previousHeartbeat.retries < maxretries) {
-                // Retries available
-                bean.retries = previousHeartbeat.retries + 1;
-                bean.status = PENDING;
-            } else {
-                // No more retries
-                bean.retries = 0;
-                bean.status = DOWN;
-            }
-        } else if (previousHeartbeat.status === PENDING && status === DOWN && previousHeartbeat.retries < maxretries) {
-            // Retries available
-            bean.retries = previousHeartbeat.retries + 1;
-            bean.status = PENDING;
-        } else {
-            // No more retries or not pending
-            if (status === DOWN) {
-                bean.retries = previousHeartbeat.retries + 1;
-                bean.status = status;
-            } else {
-                bean.retries = 0;
-                bean.status = status;
-            }
-        }
-    } else {
-        // First beat?
-        if (status === DOWN && maxretries > 0) {
-            // Retries available
-            bean.retries = 1;
-            bean.status = PENDING;
-        } else {
-            // Retires not enabled
-            bean.retries = 0;
-            bean.status = status;
-        }
-    }
-}
 
 /**
  * Check whether a monitor is publc

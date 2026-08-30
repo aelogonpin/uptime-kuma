@@ -62,6 +62,7 @@ const zlib = require("node:zlib");
 const { promisify } = require("node:util");
 const brotliCompress = promisify(zlib.brotliCompress);
 const DomainExpiry = require("./domain_expiry");
+const RemoteForward = require("../remote-forward");
 
 const rootCertificates = rootCertificatesFingerprints();
 
@@ -1059,6 +1060,8 @@ class Monitor extends BeanModel {
             io.to(this.user_id).emit("heartbeat", bean.toJSON());
             Monitor.sendStats(io, this.id, this.user_id);
 
+            RemoteForward.enqueue(this, bean);
+
             // Store to database
             log.debug("monitor", `[${this.name}] Store`);
             await R.store(bean);
@@ -1373,6 +1376,64 @@ class Monitor extends BeanModel {
                 io.to(userID).emit("domainInfo", monitorID, domain.daysRemaining, new Date(domain.expiry));
             }
         } catch (e) {}
+    }
+
+    /**
+     * Determines the status of the next beat for a push-style heartbeat (e.g. push monitors, remote agent ingestion).
+     * @param {string} status The reported new status
+     * @param {object} previousHeartbeat The previous heartbeat object
+     * @param {number} maxretries The maximum number of retries allowed
+     * @param {boolean} isUpsideDown Indicates if the monitor is upside down
+     * @param {object} bean The new heartbeat object
+     * @returns {void}
+     */
+    static determineStatus(status, previousHeartbeat, maxretries, isUpsideDown, bean) {
+        if (isUpsideDown) {
+            status = flipStatus(status);
+        }
+
+        if (previousHeartbeat) {
+            if (previousHeartbeat.status === UP && status === DOWN) {
+                // Going Down
+                if (maxretries > 0 && previousHeartbeat.retries < maxretries) {
+                    // Retries available
+                    bean.retries = previousHeartbeat.retries + 1;
+                    bean.status = PENDING;
+                } else {
+                    // No more retries
+                    bean.retries = 0;
+                    bean.status = DOWN;
+                }
+            } else if (
+                previousHeartbeat.status === PENDING &&
+                status === DOWN &&
+                previousHeartbeat.retries < maxretries
+            ) {
+                // Retries available
+                bean.retries = previousHeartbeat.retries + 1;
+                bean.status = PENDING;
+            } else {
+                // No more retries or not pending
+                if (status === DOWN) {
+                    bean.retries = previousHeartbeat.retries + 1;
+                    bean.status = status;
+                } else {
+                    bean.retries = 0;
+                    bean.status = status;
+                }
+            }
+        } else {
+            // First beat?
+            if (status === DOWN && maxretries > 0) {
+                // Retries available
+                bean.retries = 1;
+                bean.status = PENDING;
+            } else {
+                // Retires not enabled
+                bean.retries = 0;
+                bean.status = status;
+            }
+        }
     }
 
     /**

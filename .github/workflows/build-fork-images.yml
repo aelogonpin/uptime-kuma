@@ -1,0 +1,67 @@
+name: Build Fork Images
+
+# Builds and pushes this fork's app image to GHCR in two variants from the
+# same docker/dockerfile, reusing louislam/uptime-kuma:base2 as-is (it's
+# untouched by this fork, no need to rebuild it):
+#   - root path (/)      -> ghcr.io/<owner>/uptime-kuma:<tag>
+#   - subpath (/kuma)    -> ghcr.io/<owner>/uptime-kuma:<tag>-subpath
+#
+# Both variants can be deployed as either a "central" or an "agent" instance
+# in the Remote Forwarding feature -- that's a runtime/deployment choice,
+# unrelated to which of these two images you use.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish both variants under (e.g. latest, dev)"
+        required: false
+        default: "latest"
+        type: string
+
+permissions: {}
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - variant: root
+            base_path: "/"
+            tag_suffix: ""
+          - variant: subpath
+            base_path: "/kuma"
+            tag_suffix: "-subpath"
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with: { persist-credentials: false }
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.variant }} image
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f docker/dockerfile \
+            --target release \
+            --build-arg UPTIME_KUMA_BASE_PATH="${{ matrix.base_path }}" \
+            -t "ghcr.io/${{ github.repository_owner }}/uptime-kuma:${{ inputs.tag }}${{ matrix.tag_suffix }}" \
+            --push \
+            .

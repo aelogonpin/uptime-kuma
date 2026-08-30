@@ -107,6 +107,63 @@ pm2 monit
 pm2 startup && pm2 save
 ```
 
+### 📁 Using a Subpath
+
+Uptime Kuma can be served under a subpath (e.g. `http://your-domain.com/kuma/`) via the `UPTIME_KUMA_BASE_PATH` environment variable (e.g. `UPTIME_KUMA_BASE_PATH=/kuma`).
+
+> [!WARNING]
+> The subpath is **baked into the frontend at build time** (`npm run build`), not read at server startup like most other env vars. Setting `UPTIME_KUMA_BASE_PATH` only at `docker run` / `node server/server.js` time is **not enough** if the frontend was built for a different subpath (or for no subpath at all, e.g. the official Docker images) — the page will load blank because the browser requests assets from the wrong path. Whenever you change the subpath, you must rebuild the frontend (and the Docker image, if you use one) with the new value.
+
+#### Non-Docker
+
+```bash
+export UPTIME_KUMA_BASE_PATH="/kuma"
+
+npm run build
+node server/server.js
+```
+
+Uptime Kuma is now available at `http://localhost:3001/kuma/`.
+
+#### Docker
+
+The official pre-built images (`louislam/uptime-kuma:2`, etc.) are built once with no subpath, so setting `UPTIME_KUMA_BASE_PATH` on `docker run` alone will **not** work with them -- you need to build your own image. In this fork, `docker/dockerfile` builds the frontend itself (`frontend-build` stage) from an `UPTIME_KUMA_BASE_PATH` build arg -- **it defaults to `/kuma`**, so no extra flags or a local `npm run build` are needed:
+
+```bash
+git clone https://github.com/aelogonpin/uptime-kuma.git
+cd uptime-kuma
+
+# Builds with /kuma baked in by default (both the frontend and the runtime env var)
+docker build -f docker/dockerfile -t my-uptime-kuma:agent --target release .
+
+docker run -d --restart=always -p 3001:3001 \
+  -v uptime-kuma:/app/data \
+  --name uptime-kuma-agent \
+  my-uptime-kuma:agent
+```
+
+> [!NOTE]
+> If you also build an image for the **central** instance from this same Dockerfile, pass `--build-arg UPTIME_KUMA_BASE_PATH=/` to get it at the root path instead -- the default `/kuma` is meant for agent-side images.
+
+With Docker Compose, replace the `image:` line in `compose.yaml` with a local `build:` pointing at the repo:
+
+```yaml
+services:
+  uptime-kuma:
+    build:
+      context: .
+      dockerfile: docker/dockerfile
+      target: release
+      args:
+        - UPTIME_KUMA_BASE_PATH=/kuma
+    volumes:
+      - uptime-kuma:/app/data
+    ports:
+      - 3001:3001
+```
+
+Uptime Kuma is now available at `http://localhost:3001/kuma/`.
+
 ### Advanced Installation
 
 If you need more options or need to browse via a reverse proxy, please read:
